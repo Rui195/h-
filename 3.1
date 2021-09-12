@@ -1,0 +1,97 @@
+%% 刚段平衡调整算法模块（原创）
+%（若需要切割剩余4.8，则不必要进入该步骤，因为切下来4.8的段首0.8就是报废段，其余4是浪费的段）
+
+abandon = 0;              %是否废弃第一段的记录
+if(Case == 4 || Case == 5)
+    disp("切下来4.8，此时不用走该模块，continue……");
+else
+    %直接简便方法略，第二问方法分析后改进的方法
+    %    第一种情况：第一个剩余值减去0.8大于8，逻辑推理即可。
+    if(arr(1,1) - 0.8 > 8)
+        disp("逻辑推理得第一段的前0.8m是报废段，运走二次切割即可"); disp(arr(1,1));
+        arr(1,1) = arr(1,1) - 0.8;
+        
+    else               % arr < 8.8
+        % 第二种情况：第一个剩余值减去0.8小于8，就需要余8后平均分配.
+        
+        % 先判断需要多少平均-------------------------------------------------------
+        canAdj = 0;                          %可分配的数的总和
+        Remove = 8.8 - arr(1,1);             %需要分配给第一个的长
+        disp("此时arr(1,1)的长为：");disp(arr(1,1));
+        disp("需要分配arr(1,1)的长为：");disp(Remove);
+        %         if(arr(1,1) > 8)
+        %             canAdj = canAdj +(arr(1,1)-8);   %回收arr(1,1)的多余的长度
+        %             arr(1,1) = 8;
+        %         end
+        for i = 2:n                            %回收2至n-1个段的多余长度
+            canAdj = canAdj + (arr(i,1) - 8);
+            arr(i,1) = 8;
+        end
+        disp("arr = ");disp(arr);
+        disp("此时可以分配的总长度为：");disp(canAdj);
+        
+        %优先分配给第一个长度为Remove的长度
+        arr(1,1) = arr(1,1) + Remove;
+        canAdj = canAdj - Remove;
+        
+        %再分配给剩余n-1个各段所剩余的长度
+        everyAdd = (canAdj)/(n-1);   %除去第一个不分配，其余统一分配everyAdd
+        for i = 2:n                  %分析一下不难知道种情况不会落在[8,9]之外
+            arr(i,1) = arr(i,1) + everyAdd;
+        end
+        
+        %%%%%%%%%%%%%%%%%%%%%%%% 此时所有的值已分配完毕，然后分支
+        arr(1,1) = arr(1,1) - 0.8;         %统一减去段首（若废弃则包含废弃段）0.8m的部分
+        if(arr(2,1) >= 8)                  %看看是否进入“死区”
+            %满足要求，不做任何处理，输出即可
+        else
+            %不满足要求，需要废弃第一段-----------------------------------（若不加这段效果类似“用户死区”）
+            %     此时考虑最大损失，应在第一段剩余大于4.8和其余数据的平均值小于上界9的前提下，将arr(1,1)再调整
+            % 使得其余平均所有情况都满足，然后废弃.
+            %Attention：由于这种情况只会在n=3发生，若扩展需要讨论当剩余MOD小于0时的情况，这里略.
+            arr(1,1) = arr(1,1) + 0.8;     %还原arr(1,1)方便计算
+            abandon = 1;
+            secondAdj = 0;  %将第二段以后的（含第二段）数据与上限9做差，得出可从第一个数据中减去的数据，统一为负
+            seCanAbs = arr(1,1) - 4.8;     %可以从arr(1,1)中减去的数据
+            for i =2:n
+                secondAdj = secondAdj +(arr(i,1) - 9);
+            end
+            disp(["可从第2个刚段后分配长度上限secondAdj为：",secondAdj]);
+            disp(["可从arr(1,1)减去的长seCanAbs为",seCanAbs]);
+            %下分两种情况：seCanAbs + secondAdj（负）小于0的和大于0.
+            %1.  小于等于0：代表secondAdj的绝对值大，可随便分摊……
+            %2.  此时需要在remain = 4.8的基础上加上seCanAbs + secondAdj
+            
+            %2.大于0，代表secondAdj的绝对值小，此时共需砍去4.8 +（seCanAbs + secondAdj）
+            disp(["要增加砍掉的段长seCanAbs + secondAdj = ",seCanAbs + secondAdj]);
+            if((seCanAbs + secondAdj)<=0)   %第一种
+                seShare = (seCanAbs)/(n-1);
+                remain = 4.8;
+            else                            %第二种
+                remain = 4.8 + seCanAbs + secondAdj;
+                addTotal = arr(1,1) - remain;
+                addToAve = addTotal/(n-1);
+                disp(["总共需要增加：",addTotal]);
+                for k = 2:n
+                    arr(k,1) = arr(k,1) + addToAve;
+                end
+            end
+            
+        end
+    end
+end
+
+
+%% 最终显示部分
+disp("总长度L为：");disp(L);
+if(abandon < 0.1)        %没有废弃段
+    disp("最终的切割方案为：");
+    disp(arr);
+    disp("此时的浪费刚段(好刚段，已统一减去段首0.8m)长度为：");
+    disp(remain);
+else
+    disp("废弃了第一段，从第二个数开始为有效值：");
+    disp(arr);
+    disp("最终的浪费刚段(好刚段，已统一减去段首0.8m长度为：");
+    disp(remain);
+end
